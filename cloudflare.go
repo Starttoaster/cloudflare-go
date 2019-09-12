@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"bufio"
+	"time"
 )
 
 //JSON response struct
@@ -44,7 +45,7 @@ func getData(email string, gapik string, zone string) response {
 	resp, err := client.Do(req)
 	if err != nil {
         log.Fatalln(err)
-    }
+	}
 	//Closing request
 	defer resp.Body.Close()
 	//Reading response body and converting to usable variable
@@ -105,12 +106,10 @@ func putData(email string, gapik string, zone string, id string, recordType stri
     }
 	//Closing request
 	defer resp.Body.Close()
-	//Reading response body and converting to usable variable
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	fmt.Println(string(body))
+
+	//Formatting response
+	currentTime := time.Now()
+	fmt.Println("Current Time: " + currentTime.Format("2006-01-02 3:4:5 PM") + "\nUpdated Record: " + name + "\nUpdated IP: " + ip + "\n")
 }
 
 //Reads credentials file and returns string slice
@@ -139,23 +138,28 @@ func main() {
 	gapik := credLines[1]
 	zone := credLines[2]
 
-	jsonData := getData(email, gapik, zone)
-	numOfRecords := len(jsonData.Result)
-	publicIP := getIP()
-	for i := 0; i < numOfRecords; i++ {
-		recordType := jsonData.Result[i].Type
-		recordIP := jsonData.Result[i].Content
-		//Filter for only A records to update
-		if(recordType == "A") {
-			//Only proceed if the record's IP address on file is different from the current one
-			if(recordIP != publicIP) {
-				//Define the other required variables for this record
-				recordIdentifier := jsonData.Result[i].Identifier
-				recordName := jsonData.Result[i].Name
-				recordProxied := jsonData.Result[i].Proxied
-				
-				putData(email, gapik, zone, recordIdentifier, recordType, recordName, publicIP, recordProxied)
+	//Infinite loop to update records over time
+	for {
+		jsonData := getData(email, gapik, zone)
+		numOfRecords := len(jsonData.Result)
+		publicIP := getIP()
+		for i := 0; i < numOfRecords; i++ {
+			recordType := jsonData.Result[i].Type
+			recordIP := jsonData.Result[i].Content
+			//Filter for only A records to update
+			if(recordType == "A") {
+				//Only proceed if the record's IP address on file is different from the current one
+				if(recordIP != publicIP) {
+					//Define the other required variables for this record
+					recordIdentifier := jsonData.Result[i].Identifier
+					recordName := jsonData.Result[i].Name
+					recordProxied := jsonData.Result[i].Proxied
+					
+					putData(email, gapik, zone, recordIdentifier, recordType, recordName, publicIP, recordProxied)
+				}
 			}
 		}
+		//Sleeping for 30 seconds
+		time.Sleep(30 * time.Second)
 	}
 }

@@ -103,7 +103,7 @@ func putData(email string, gapik string, zone string, id string, recordType stri
 	resp, err := client.Do(req)
 	if err != nil {
         log.Fatalln(err)
-    }
+	}
 	//Closing request
 	defer resp.Body.Close()
 

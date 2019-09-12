@@ -24,3 +24,14 @@ zone identifier
   2. Global API Key -- This is found in the Cloudflare website under "My Profile > API Keys > Global API Key"
 
   3. Zone ID -- This ID is a random string of letters and numbers specific to your domain name. Found in the Cloudflare website on your domain's "Overview" page written as "Zone ID" 
+
+
+## Use with Docker
+
+Build the image: `docker build -t cloudflare .`
+
+Start your container: `docker container run -d -v "$PWD/credfile:/go/credfile" cloudflare`
+
+View logs to see it run: `docker logs <container name>`
+
+NOTE: You will only see text in the logs when the IP is updated. If you would like to test the program, you can change your DNS records to a random IP from the website, and watch as this script corrects them. Or you can connect to a VPN and watch as your records are updated with the VPNs IP address (remember to log out of the VPN, as you likely don't want your domain name pointed at the VPNs IP.)

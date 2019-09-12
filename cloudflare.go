@@ -31,11 +31,9 @@ type sendme struct {
 }
 
 //Gets data from Cloudflare API's DNS zone records and returns a structure of relevant data
-func getData(email string, gapik string, zone string) response {
-	//Set up HTTP client and a new http GET request
+func getData(client *http.Client, email string, gapik string, zone string) response {
+	//Set up new http GET request
 	url := "https://api.cloudflare.com/client/v4/zones/" + zone + "/dns_records"
-	client := &http.Client{
-	}
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("X-Auth-Email", email)
 	req.Header.Set("X-Auth-Key", gapik)
@@ -44,7 +42,7 @@ func getData(email string, gapik string, zone string) response {
 	//Do GET request
 	resp, err := client.Do(req)
 	if err != nil {
-        log.Fatalln(err)
+		log.Fatalln(err)
 	}
 	//Closing request
 	defer resp.Body.Close()
@@ -57,28 +55,28 @@ func getData(email string, gapik string, zone string) response {
 	//Uses JSON response structs to grab relevant key values
 	var jsonData response
 	err = json.Unmarshal([]byte(body), &jsonData)
-    if err != nil {
-        log.Fatalln(err)
-    }
-   	return jsonData
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return jsonData
 }
 
 //Finds the computer's current public IP address and returns it
 func getIP() string {
-    resp, err := http.Get("http://checkip.amazonaws.com")
+	resp, err := http.Get("http://checkip.amazonaws.com")
 	if err != nil {
 		log.Fatalln(err)
 	}
-    defer resp.Body.Close()
-    body, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
 	}
-    return string(bytes.TrimSpace(body))
+	return string(bytes.TrimSpace(body))
 }
 
 //Puts data to Cloudflare API's DNS zone records
-func putData(email string, gapik string, zone string, id string, recordType string, name string, ip string, proxied bool) {
+func putData(client *http.Client, email string, gapik string, zone string, id string, recordType string, name string, ip string, proxied bool) {
 	url := "https://api.cloudflare.com/client/v4/zones/" + zone + "/dns_records/" + id
 	//Initialize struct and marshal to JSON
 	data := sendme{
@@ -91,9 +89,7 @@ func putData(email string, gapik string, zone string, id string, recordType stri
 	if err != nil {
 		log.Fatalln(err)
 	}
-	//Set up HTTP client and a new http PUT request
-	client := &http.Client{
-	}
+	//Set up new http PUT request
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	req.Header.Set("X-Auth-Email", email)
 	req.Header.Set("X-Auth-Key", gapik)
@@ -102,7 +98,7 @@ func putData(email string, gapik string, zone string, id string, recordType stri
 	//Do PUT request
 	resp, err := client.Do(req)
 	if err != nil {
-        log.Fatalln(err)
+		log.Fatalln(err)
 	}
 	//Closing request
 	defer resp.Body.Close()
@@ -114,21 +110,26 @@ func putData(email string, gapik string, zone string, id string, recordType stri
 
 //Reads credentials file and returns string slice
 func readLines() ([]string, error) {
-    file, err := os.Open("credfile")
+	file, err := os.Open("credfile")
 	if err != nil {
 		log.Fatalln(err)
 	}
-    defer file.Close()
+	defer file.Close()
 
-    var lines []string
-    scanner := bufio.NewScanner(file)
-    for scanner.Scan() {
-        lines = append(lines, scanner.Text())
-    }
-    return lines, scanner.Err()
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
 }
 
 func main() {
+	//Set up HTTP client with timeout
+	timeout := time.Duration(120 * time.Second)
+	client := &http.Client{
+		Timeout: timeout,
+	}
 	//Get authentication variables from file
 	credLines, err := readLines()
 	if err != nil {
@@ -140,7 +141,7 @@ func main() {
 
 	//Infinite loop to update records over time
 	for {
-		jsonData := getData(email, gapik, zone)
+		jsonData := getData(client, email, gapik, zone)
 		numOfRecords := len(jsonData.Result)
 		publicIP := getIP()
 		for i := 0; i < numOfRecords; i++ {
@@ -154,12 +155,12 @@ func main() {
 					recordIdentifier := jsonData.Result[i].Identifier
 					recordName := jsonData.Result[i].Name
 					recordProxied := jsonData.Result[i].Proxied
-					
-					putData(email, gapik, zone, recordIdentifier, recordType, recordName, publicIP, recordProxied)
+
+					putData(client, email, gapik, zone, recordIdentifier, recordType, recordName, publicIP, recordProxied)
 				}
 			}
 		}
-		//Sleeping for 30 seconds
-		time.Sleep(30 * time.Second)
+		//Sleeping for 20 seconds
+		time.Sleep(20 * time.Second)
 	}
 }

@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+//Global variable declaration
+var interval time.Duration = 20
+
 //JSON response struct
 type response struct {
 	Result []struct {
@@ -160,7 +163,7 @@ func main() {
 				}
 			}
 		}
-		//Sleeping for 20 seconds
-		time.Sleep(20 * time.Second)
+		//Sleeping for n seconds
+		time.Sleep(interval * time.Second)
 	}
 }

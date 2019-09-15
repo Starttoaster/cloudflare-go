@@ -1,15 +1,9 @@
 # cloudflare-go
 Dynamic DNS record updater written in Golang
 
-## Use
+## Pre-requisite
 
-You can either build from source, or run the script as is. Either way you need Golang installed. 
-
-To build from source: `go build cloudflare.go`
-
-Run the compiled code: `./cloudflare`
-
-To actually interact with Cloudflare, this needs a separate file in the same directory, provided by you, with 3 lines. The name of the file should be `credfile` and have the following in order:
+To actually interact with Cloudflare, this needs a separate file provided by you, with 3 lines. The name of the file should be `credfile` and have the following in order:
 
 ```
 email address
@@ -28,9 +22,7 @@ zone identifier
 
 ## Use with Docker
 
-Build the image: `docker build -t cloudflare .`
-
-Start your container: `docker container run -d -v "$PWD/credfile:/go/credfile" cloudflare`
+Start your container: `docker container run -d -v "$PWD/credfile:/config/credfile" starttoaster/cloudflare-go`
 
 View logs to see it run: `docker logs <container name>`
 

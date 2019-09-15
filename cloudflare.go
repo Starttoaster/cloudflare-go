@@ -113,7 +113,7 @@ func putData(client *http.Client, email string, gapik string, zone string, id st
 
 //Reads credentials file and returns string slice
 func readLines() ([]string, error) {
-	file, err := os.Open("credfile")
+	file, err := os.Open("/config/credfile")
 	if err != nil {
 		log.Fatalln(err)
 	}

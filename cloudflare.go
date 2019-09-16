@@ -14,7 +14,7 @@ import (
 
 //Global variable declarations
 var interval time.Duration = 20
-var credPath string = "/config/credfile"
+var credentialsFile string = "/config/credfile"
 
 //JSON response struct
 type response struct {
@@ -106,7 +106,7 @@ func getIP() string {
 }
 
 //Reads credentials file and returns string slice
-func readLines() ([]string, error) {
+func readLines(credPath string) ([]string, error) {
 	file, err := os.Open(credPath)
 	if err != nil {
 		log.Fatalln(err)
@@ -128,7 +128,7 @@ func main() {
 		Timeout: timeout,
 	}
 	//Get authentication variables from file
-	credLines, err := readLines()
+	credLines, err := readLines(credentialsFile)
 	if err != nil {
 		log.Fatalln(err)
 	}

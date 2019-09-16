@@ -12,8 +12,10 @@ import (
 	"time"
 )
 
-//Global variable declaration
+//Global variable declarations
 var interval time.Duration = 20
+//var credPath string = "/config/credfile"
+var credPath string = "credfile"
 
 //JSON response struct
 type response struct {
@@ -33,31 +35,55 @@ type sendme struct {
 	Proxied    bool   `json:"proxied"`
 }
 
-//Gets data from Cloudflare API's DNS zone records and returns a structure of relevant data
-func getData(client *http.Client, email string, gapik string, zone string) response {
-	//Set up new http GET request
-	url := "https://api.cloudflare.com/client/v4/zones/" + zone + "/dns_records"
-	req, err := http.NewRequest("GET", url, nil)
+//Uniform http.NewRequest template for mutliple operations
+func httpRequest(client *http.Client, reqType string, url string, instruction []byte, email string, gapik string, zone string) []byte {
+	var req *http.Request
+	var err error
+	if(instruction == nil) {
+		req, err = http.NewRequest(reqType, url, nil)
+	} else {
+		req, err = http.NewRequest(reqType, url, bytes.NewBuffer(instruction))
+	}
+	if err != nil {
+		log.Fatalln(err)
+	}
 	req.Header.Set("X-Auth-Email", email)
 	req.Header.Set("X-Auth-Key", gapik)
 	req.Header.Set("Content-type", "application/json")
 
-	//Do GET request
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	//Closing request
+
 	defer resp.Body.Close()
-	//Reading response body and converting to usable variable
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	return body
+}
 
-	//Uses JSON response structs to grab relevant key values
+//Unmarshals the JSON response into the 'response' struct type
+func unjsonify(body []byte) response {
 	var jsonData response
-	err = json.Unmarshal([]byte(body), &jsonData)
+	err := json.Unmarshal([]byte(body), &jsonData)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return jsonData
+}
+
+//Creates a JSON payload of type 'sendme'
+func jsonify(recordType string, name string, ip string, proxied bool) []byte {
+	data := sendme{
+		RecordType: recordType,
+		Name:       name,
+		Content:    ip,
+		Proxied:    proxied,
+	}
+	jsonData, err := json.Marshal(data)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -70,7 +96,9 @@ func getIP() string {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
@@ -78,42 +106,9 @@ func getIP() string {
 	return string(bytes.TrimSpace(body))
 }
 
-//Puts data to Cloudflare API's DNS zone records
-func putData(client *http.Client, email string, gapik string, zone string, id string, recordType string, name string, ip string, proxied bool) {
-	url := "https://api.cloudflare.com/client/v4/zones/" + zone + "/dns_records/" + id
-	//Initialize struct and marshal to JSON
-	data := sendme{
-		RecordType: recordType,
-		Name:       name,
-		Content:    ip,
-		Proxied:    proxied,
-	}
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	//Set up new http PUT request
-	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
-	req.Header.Set("X-Auth-Email", email)
-	req.Header.Set("X-Auth-Key", gapik)
-	req.Header.Set("Content-type", "application/json")
-
-	//Do PUT request
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	//Closing request
-	defer resp.Body.Close()
-
-	//Formatting response
-	currentTime := time.Now()
-	fmt.Println("Current Time: " + currentTime.Format("2006-01-02 3:4:5 PM") + "\nUpdated Record: " + name + "\nUpdated IP: " + ip + "\n")
-}
-
 //Reads credentials file and returns string slice
 func readLines() ([]string, error) {
-	file, err := os.Open("/config/credfile")
+	file, err := os.Open(credPath)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -142,25 +137,35 @@ func main() {
 	gapik := credLines[1]
 	zone := credLines[2]
 
+	fmt.Println("Starting program successfully... Output will be displayed only when records are updated.")
 	//Infinite loop to update records over time
 	for {
-		jsonData := getData(client, email, gapik, zone)
+		//GETS current record information
+		url := "https://api.cloudflare.com/client/v4/zones/" + zone + "/dns_records"
+		body := httpRequest(client, "GET", url, nil, email, gapik, zone)
+		jsonData := unjsonify(body)
+
 		numOfRecords := len(jsonData.Result)
 		publicIP := getIP()
 		for i := 0; i < numOfRecords; i++ {
 			recordType := jsonData.Result[i].Type
 			recordIP := jsonData.Result[i].Content
-			//Filter for only A records to update
-			if(recordType == "A") {
-				//Only proceed if the record's IP address on file is different from the current one
-				if(recordIP != publicIP) {
-					//Define the other required variables for this record
-					recordIdentifier := jsonData.Result[i].Identifier
-					recordName := jsonData.Result[i].Name
-					recordProxied := jsonData.Result[i].Proxied
+			//Only proceeds if is an A Record, and current IP differs from recorded one
+			if(recordType == "A" && recordIP != publicIP) {
+				//Fetches more required variables
+				recordIdentifier := jsonData.Result[i].Identifier
+				recordName := jsonData.Result[i].Name
+				recordProxied := jsonData.Result[i].Proxied
 
-					putData(client, email, gapik, zone, recordIdentifier, recordType, recordName, publicIP, recordProxied)
-				}
+				//Creates JSON payload
+				jsonData := jsonify(recordType, recordName, publicIP, recordProxied)
+				//PUTS new record information
+				url := url + "/" + recordIdentifier
+				httpRequest(client, "PUT", url, jsonData, email, gapik, zone)
+
+				//Prints after successful update
+				currentTime := time.Now()
+				fmt.Println("Current Time: " + currentTime.Format("2006-01-02 3:4:5 PM") + "\nUpdated Record: " + recordName + "\nUpdated IP: " + publicIP + "\n")
 			}
 		}
 		//Sleeping for n seconds

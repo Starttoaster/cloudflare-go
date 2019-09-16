@@ -14,8 +14,7 @@ import (
 
 //Global variable declarations
 var interval time.Duration = 20
-//var credPath string = "/config/credfile"
-var credPath string = "credfile"
+var credPath string = "/config/credfile"
 
 //JSON response struct
 type response struct {
@@ -160,8 +159,8 @@ func main() {
 				//Creates JSON payload
 				jsonData := jsonify(recordType, recordName, publicIP, recordProxied)
 				//PUTS new record information
-				url := url + "/" + recordIdentifier
-				httpRequest(client, "PUT", url, jsonData, email, gapik, zone)
+				recordUrl := url + "/" + recordIdentifier
+				httpRequest(client, "PUT", recordUrl, jsonData, email, gapik, zone)
 
 				//Prints after successful update
 				currentTime := time.Now()

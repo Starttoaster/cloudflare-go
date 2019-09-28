@@ -1,0 +1,32 @@
+<!--index.html-->
+<head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <title>Cloudflare dDNS</title>
+</head>
+<body>
+    <ul></ul>
+    <div class="container">
+        <h1>Cloudflare Records</h1>
+        <hr class="my-4">
+        <table class="table table-hover">
+            <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Domain</th>
+                    <th scope="col">IP Addr</th>
+                    <th scope="col">Proxied</th>
+                    <th scope="col">Last Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+            {{range .}}
+                <tr>
+                    <td>{{.Name}}</td>
+                    <td>{{.IP}}</td>
+                    <td>{{.Proxy}}</td>
+                    <td>{{.Time}}</td>
+                </tr>
+            {{end}}
+           </tbody>
+        </table>
+    </div>
+</body>

@@ -22,8 +22,8 @@ zone identifier
 
 ## Use with Docker
 
-Start your container: `docker container run -d -v "$PWD/credfile:/config/credfile" starttoaster/cloudflare-go`
+Start your container: `docker container run -d -p 8080:8080 -v "$PWD/credfile:/config/credfile" starttoaster/cloudflare-go`
 
-View logs to see it run: `docker logs <container name>`
+View the webUI in your web browser to see it run: `localhost:8080`
 
-NOTE: You will only see text in the logs when the IP is updated. If you would like to test the program, you can change your DNS records to a random IP from the website, and watch as this script corrects them. Or you can connect to a VPN and watch as your records are updated with the VPNs IP address (remember to log out of the VPN, as you likely don't want your domain name pointed at the VPNs IP.)
+![Image of webUI](https://github.com/Starttoaster/cloudflare-go/images/screenshot.png)

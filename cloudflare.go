@@ -1,20 +1,37 @@
 package main
 
 import (
-	"net/http"
-	"io/ioutil"
-	"log"
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
-	"bufio"
 	"time"
 )
 
+//Dev environment variables
+//var credentialsFile string = "./credfile"
+//var templateFile string = "./templates/index.html"
+
 //Global variable declarations
-var interval time.Duration = 20
+var interval time.Duration = 10
 var credentialsFile string = "/config/credfile"
+var templateFile string = "/go/src/cloudflare/templates/index.html"
+var TableData []table = make([]table, 10)
+var numOfRecords int
+var setTime string
+
+//For html table
+type table struct {
+	Name  string
+	IP    string
+	Proxy bool
+	Time  string
+}
 
 //JSON response struct
 type response struct {
@@ -26,6 +43,7 @@ type response struct {
 		Content    string `json:"content"`
 	} `json:"result"`
 }
+
 //JSON PUT struct
 type sendme struct {
 	RecordType string `json:"type"`
@@ -38,7 +56,7 @@ type sendme struct {
 func httpRequest(client *http.Client, reqType string, url string, instruction []byte, email string, gapik string, zone string) []byte {
 	var req *http.Request
 	var err error
-	if(instruction == nil) {
+	if instruction == nil {
 		req, err = http.NewRequest(reqType, url, nil)
 	} else {
 		req, err = http.NewRequest(reqType, url, bytes.NewBuffer(instruction))
@@ -121,7 +139,7 @@ func readLines(credPath string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-func main() {
+func update() {
 	//Set up HTTP client with timeout
 	timeout := time.Duration(120 * time.Second)
 	client := &http.Client{
@@ -144,30 +162,49 @@ func main() {
 		body := httpRequest(client, "GET", url, nil, email, gapik, zone)
 		jsonData := unjsonify(body)
 
-		numOfRecords := len(jsonData.Result)
+		numOfRecords = len(jsonData.Result)
 		publicIP := getIP()
 		for i := 0; i < numOfRecords; i++ {
 			recordType := jsonData.Result[i].Type
 			recordIP := jsonData.Result[i].Content
-			//Only proceeds if is an A Record, and current IP differs from recorded one
-			if(recordType == "A" && recordIP != publicIP) {
-				//Fetches more required variables
-				recordIdentifier := jsonData.Result[i].Identifier
-				recordName := jsonData.Result[i].Name
-				recordProxied := jsonData.Result[i].Proxied
+			recordIdentifier := jsonData.Result[i].Identifier
+			recordName := jsonData.Result[i].Name
+			recordProxied := jsonData.Result[i].Proxied
 
-				//Creates JSON payload
-				jsonData := jsonify(recordType, recordName, publicIP, recordProxied)
+			TableData[i] = table{
+				Name:  recordName,
+				IP:    publicIP,
+				Proxy: recordProxied,
+			}
+			//Proceeds if is an A Record, AND current IP differs from recorded one
+			if recordType == "A" && recordIP != publicIP {
+				jsonData := jsonify(recordType, recordName, publicIP, recordProxied) //Creates JSON payload
 				//PUTS new record information
-				recordUrl := url + "/" + recordIdentifier
-				httpRequest(client, "PUT", recordUrl, jsonData, email, gapik, zone)
+				recordURL := url + "/" + recordIdentifier
+				httpRequest(client, "PUT", recordURL, jsonData, email, gapik, zone)
 
 				//Prints after successful update
-				currentTime := time.Now()
-				fmt.Println("Current Time: " + currentTime.Format("2006-01-02 3:4:5 PM") + "\nUpdated Record: " + recordName + "\nUpdated IP: " + publicIP + "\n")
+				setTime = time.Now().Format("2006-01-02 3:4:5 PM")
+				TableData[i].Time = setTime
+				fmt.Println("Current Time: " + setTime + "\nUpdated Record: " + recordName + "\nUpdated IP: " + publicIP + "\n")
+			} else {
+				TableData[i].Time = setTime
 			}
 		}
-		//Sleeping for n seconds
-		time.Sleep(interval * time.Second)
+		time.Sleep(interval * time.Second) //Sleeping for n seconds
 	}
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	indexTmpl, err := template.ParseFiles(templateFile)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	indexTmpl.Execute(w, TableData[0:numOfRecords])
+}
+
+func main() {
+	go update()
+	http.HandleFunc("/", indexHandler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

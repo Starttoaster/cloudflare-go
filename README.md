@@ -26,4 +26,4 @@ Start your container: `docker container run -d -p 8080:8080 -v "$PWD/credfile:/c
 
 View the webUI in your web browser to see it run: `localhost:8080`
 
-![Image of webUI](https://github.com/Starttoaster/cloudflare-go/images/screenshot.png)
+![Image of webUI](https://i.imgur.com/qziKSxC.png)

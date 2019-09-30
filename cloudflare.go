@@ -21,9 +21,12 @@ import (
 var interval time.Duration = 10
 var credentialsFile string = "/config/credfile"
 var templateFile string = "/go/src/cloudflare/templates/index.html"
-var TableData []table = make([]table, 10)
+var tableData []table = make([]table, 10)
+var setTime []string = make([]string, 10)
 var numOfRecords int
-var setTime string
+var email string
+var gapik string
+var zone string
 
 //For html table
 type table struct {
@@ -124,36 +127,27 @@ func getIP() string {
 }
 
 //Reads credentials file and returns string slice
-func readLines(credPath string) ([]string, error) {
+func readLines(credPath string) {
 	file, err := os.Open(credPath)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	defer file.Close()
 
-	var lines []string
+	var credLines []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+		credLines = append(credLines, scanner.Text())
 	}
-	return lines, scanner.Err()
-}
-
-func update() {
-	//Set up HTTP client with timeout
-	timeout := time.Duration(120 * time.Second)
-	client := &http.Client{
-		Timeout: timeout,
-	}
-	//Get authentication variables from file
-	credLines, err := readLines(credentialsFile)
-	if err != nil {
+	if scanner.Err() != nil {
 		log.Fatalln(err)
 	}
-	email := credLines[0]
-	gapik := credLines[1]
-	zone := credLines[2]
+	email = credLines[0]
+	gapik = credLines[1]
+	zone = credLines[2]
+}
 
+func update(client *http.Client) {
 	fmt.Println("Starting program successfully... Output will be displayed only when records are updated.")
 	//Infinite loop to update records over time
 	for {
@@ -171,11 +165,6 @@ func update() {
 			recordName := jsonData.Result[i].Name
 			recordProxied := jsonData.Result[i].Proxied
 
-			TableData[i] = table{
-				Name:  recordName,
-				IP:    publicIP,
-				Proxy: recordProxied,
-			}
 			//Proceeds if is an A Record, AND current IP differs from recorded one
 			if recordType == "A" && recordIP != publicIP {
 				jsonData := jsonify(recordType, recordName, publicIP, recordProxied) //Creates JSON payload
@@ -184,11 +173,22 @@ func update() {
 				httpRequest(client, "PUT", recordURL, jsonData, email, gapik, zone)
 
 				//Prints after successful update
-				setTime = time.Now().Format("2006-01-02 3:4:5 PM")
-				TableData[i].Time = setTime
-				fmt.Println("Current Time: " + setTime + "\nUpdated Record: " + recordName + "\nUpdated IP: " + publicIP + "\n")
+				setTime[i] = time.Now().Format("2006-01-02 3:4:5 PM")
+
+				tableData[i] = table{
+					Name:  recordName,
+					IP:    publicIP,
+					Proxy: recordProxied,
+					Time:  setTime[i],
+				}
+				fmt.Println("Current Time: " + setTime[i] + "\nUpdated Record: " + recordName + "\nUpdated IP: " + publicIP + "\n")
 			} else {
-				TableData[i].Time = setTime
+				tableData[i] = table{
+					Name:  recordName,
+					IP:    publicIP,
+					Proxy: recordProxied,
+					Time:  setTime[i],
+				}
 			}
 		}
 		time.Sleep(interval * time.Second) //Sleeping for n seconds
@@ -200,11 +200,18 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	indexTmpl.Execute(w, TableData[0:numOfRecords])
+	indexTmpl.Execute(w, tableData[0:numOfRecords])
 }
 
 func main() {
-	go update()
+	readLines(credentialsFile)
+
+	timeout := time.Duration(120 * time.Second)
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	go update(client)
 	http.HandleFunc("/", indexHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatalln(http.ListenAndServe(":8080", nil))
 }

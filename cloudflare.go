@@ -12,9 +12,11 @@ import (
 	"time"
 )
 
+//Dev testing variables
+//var templateFile string = "./templates/index.html"
+
 //Global variable declarations
-//var templateFile string = "/go/src/cloudflare/templates/index.html"
-var templateFile string = "./templates/index.html"
+var templateFile string = "/go/src/cloudflare/templates/index.html"
 var interval time.Duration = 30
 var tableData []table = make([]table, 10)
 var setTime []string = make([]string, 10)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -13,14 +12,10 @@ import (
 	"time"
 )
 
-//Dev environment variables
-//var credentialsFile string = "./credfile"
-//var templateFile string = "./templates/index.html"
-
 //Global variable declarations
-var interval time.Duration = 10
-var credentialsFile string = "/config/credfile"
-var templateFile string = "/go/src/cloudflare/templates/index.html"
+//var templateFile string = "/go/src/cloudflare/templates/index.html"
+var templateFile string = "./templates/index.html"
+var interval time.Duration = 30
 var tableData []table = make([]table, 10)
 var setTime []string = make([]string, 10)
 var numOfRecords int
@@ -126,25 +121,22 @@ func getIP() string {
 	return string(bytes.TrimSpace(body))
 }
 
-//Reads credentials file and returns string slice
-func readLines(credPath string) {
-	file, err := os.Open(credPath)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer file.Close()
+//Reads credentials via shell variables
+func getCredentials() {
+	email = os.Getenv("CF_EMAIL")
+	gapik = os.Getenv("CF_KEY")
+	zone = os.Getenv("CF_ZONE")
 
-	var credLines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		credLines = append(credLines, scanner.Text())
+	if email == "" {
+		fmt.Println("Account email is not set")
+		os.Exit(1)
+	} else if gapik == "" {
+		fmt.Println("Account API key is not set")
+		os.Exit(1)
+	} else if zone == "" {
+		fmt.Println("Cloudflare zone is not set")
+		os.Exit(1)
 	}
-	if scanner.Err() != nil {
-		log.Fatalln(err)
-	}
-	email = credLines[0]
-	gapik = credLines[1]
-	zone = credLines[2]
 }
 
 func update(client *http.Client) {
@@ -195,6 +187,15 @@ func update(client *http.Client) {
 	}
 }
 
+//Creates a new mux with handler(s)
+func setupHandlers() *http.ServeMux {
+	mux := http.NewServeMux()
+
+	//Dynamic handlers
+	mux.HandleFunc("/", indexHandler)
+
+	return mux
+}
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	indexTmpl, err := template.ParseFiles(templateFile)
 	if err != nil {
@@ -204,7 +205,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	readLines(credentialsFile)
+	getCredentials()
 
 	timeout := time.Duration(120 * time.Second)
 	client := &http.Client{
@@ -212,6 +213,7 @@ func main() {
 	}
 
 	go update(client)
-	http.HandleFunc("/", indexHandler)
-	log.Fatalln(http.ListenAndServe(":8080", nil))
+
+	mux := setupHandlers()
+	log.Fatalln(http.ListenAndServe(":8080", mux))
 }

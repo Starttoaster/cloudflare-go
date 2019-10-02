@@ -12,11 +12,7 @@ import (
 	"time"
 )
 
-//Dev testing variables
-//var templateFile string = "./templates/index.html"
-
 //Global variable declarations
-var templateFile string = "/go/src/cloudflare/templates/index.html"
 var interval time.Duration = 30
 var tableData []table = make([]table, 10)
 var setTime []string = make([]string, 10)
@@ -24,6 +20,8 @@ var numOfRecords int
 var email string
 var gapik string
 var zone string
+var templateFile string
+var environment string = "prod"
 
 //For html table
 type table struct {
@@ -124,21 +122,23 @@ func getIP() string {
 }
 
 //Reads credentials via shell variables
-func getCredentials() {
+func getCredentials() (string, string, string) {
 	email = os.Getenv("CF_EMAIL")
 	gapik = os.Getenv("CF_KEY")
 	zone = os.Getenv("CF_ZONE")
 
-	if email == "" {
-		fmt.Println("Account email is not set")
-		os.Exit(1)
-	} else if gapik == "" {
-		fmt.Println("Account API key is not set")
-		os.Exit(1)
-	} else if zone == "" {
-		fmt.Println("Cloudflare zone is not set")
+	//Sets environment to the shell variable if it exists. Uses the default "prod" in all other cases
+	//Exporting the shell variable CF_ENV to "dev" will set the html template to be in the local repository directory
+	if envSelect := os.Getenv("CF_ENV"); len(envSelect) > 0 {
+		environment = envSelect
+	}
+
+	//Checks to make sure email, global API key, and zone are set.
+	if email == "" || gapik == "" || zone == "" {
+		fmt.Println("Account email, API key, or zone is not set")
 		os.Exit(1)
 	}
+	return email, gapik, zone
 }
 
 func update(client *http.Client) {
@@ -199,6 +199,11 @@ func setupHandlers() *http.ServeMux {
 	return mux
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	if environment == "dev" {
+		templateFile = "./templates/index.html"
+	} else if environment == "prod" {
+		templateFile = "/go/src/cloudflare/templates/index.html"
+	}
 	indexTmpl, err := template.ParseFiles(templateFile)
 	if err != nil {
 		log.Fatalln(err)

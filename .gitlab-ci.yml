@@ -1,0 +1,19 @@
+image: docker:latest
+
+services:
+  - docker:dind
+
+stages:
+  - build
+
+variables:
+  REGISTRY: "registry.gitlab.com/brandonbutler/cloudflare-go"
+  CONTAINER_IMAGE: ${REGISTRY}/${CI_PROJECT_NAME}:latest
+
+build:
+  stage: build
+  before_script:
+    - docker login $REGISTRY -u brandonbutler -p $REGISTRY_PASSWORD
+  script:
+    - docker build -t ${CONTAINER_IMAGE} .
+    - docker push ${CONTAINER_IMAGE}

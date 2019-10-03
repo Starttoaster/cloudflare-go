@@ -1,8 +1,15 @@
 #Build image
-FROM golang:alpine AS builder
-ADD . /go/src/cloudflare
-RUN cd /go/src/cloudflare && GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o cloudflare \
-    && mkdir /config
+FROM golang:latest AS builder
+
+ENV APP_PATH=/go/src/cloudflare-go
+
+RUN mkdir -p $APP_PATH
+WORKDIR $APP_PATH
+
+ADD . $APP_PATH
+RUN go test -v \
+    && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-w -s" -o cloudflare
+
 
 #End image
 FROM alpine
@@ -10,8 +17,7 @@ LABEL maintainer="Brandon Butler bmbawb@gmail.com"
 
 RUN apk add --no-cache tzdata
 ENV TZ=America/Chicago
-COPY --from=builder /go/src/cloudflare/cloudflare /go/src/cloudflare/cloudflare
-COPY --from=builder /go/src/cloudflare/templates/index.html /go/src/cloudflare/templates/index.html
-COPY --from=builder /config /config
-VOLUME /config
-ENTRYPOINT ["/go/src/cloudflare/cloudflare"]
+COPY --from=builder /go/src/cloudflare-go/cloudflare /cloudflare
+COPY --from=builder /go/src/cloudflare-go/index.html /index.html
+
+ENTRYPOINT ["/cloudflare"]

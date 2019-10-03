@@ -200,9 +200,9 @@ func setupHandlers() *http.ServeMux {
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	if environment == "dev" {
-		templateFile = "./templates/index.html"
+		templateFile = "./index.html"
 	} else if environment == "prod" {
-		templateFile = "/go/src/cloudflare/templates/index.html"
+		templateFile = "/index.html"
 	}
 	indexTmpl, err := template.ParseFiles(templateFile)
 	if err != nil {

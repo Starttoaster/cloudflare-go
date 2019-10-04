@@ -11,6 +11,23 @@ View the webUI in your web browser to see it run: `localhost:8080`
 
 ![Image of webUI](https://i.imgur.com/qziKSxC.png)
 
+
+Example docker-compose.yml:
+
+```
+version: '2'
+services:
+
+ cloudflare:
+   container_name: cloudflare-dns
+   image: registry.gitlab.com/brandonbutler/cloudflare-go/cloudflare-go:latest
+   environment:
+     - CF_EMAIL="example@email.com"
+     - CF_KEY="examplekeywithsomenumbers3241095642"
+     - CF_ZONE="examplezonewithsomenumbers34095243832320934"
+```
+
+
 **NOTE:** The bare minimum required details to interact with Cloudflare's DNS API is the account email, Global API Key, and Zone ID attributes. This container finds other necessary attributes 
 without requiring user input by itself, but if you need help finding the 3 required attributes I listed, view the section below regarding "API Attributes".
 

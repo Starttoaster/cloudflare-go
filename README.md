@@ -3,7 +3,7 @@ Dynamic DNS record updater written in Golang
 
 # Use
 
-You can either start this container via `docker run` or `docker-compose`. I attached a sample docker-compose.yml file in the repo to use if desired.
+You can either start this container via `docker run` or `docker-compose`.
 
 **Quick Start:** `docker run -d -p 8080:8080 -e CF_EMAIL="email@email.com" -e CF_KEY="my_global_api_key" -e CF_ZONE="my_zone_id" starttoaster/cloudflare-go`
 

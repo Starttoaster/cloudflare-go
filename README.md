@@ -1,11 +1,22 @@
 # cloudflare-go
 Dynamic DNS record updater written in Golang
 
+[![pipeline status](https://gitlab.com/brandonbutler/cloudflare-go/badges/master/pipeline.svg)](https://gitlab.com/brandonbutler/cloudflare-go/commits/master)
+[![coverage report](https://gitlab.com/brandonbutler/cloudflare-go/badges/master/coverage.svg)](https://gitlab.com/brandonbutler/cloudflare-go/commits/master)
+
 # Use
 
 You can either start this container via `docker run` or `docker-compose`.
 
-**Quick Start:** `docker run -d -p 8080:8080 -e CF_EMAIL="email@email.com" -e CF_KEY="my_global_api_key" -e CF_ZONE="my_zone_id" starttoaster/cloudflare-go`
+**Quick Start:** 
+```
+docker container run \
+  -p 8080:8080 \
+  -e CF_EMAIL="email@email.com" \
+  -e CF_KEY="my_global_api_key" \
+  -e CF_ZONE="my_zone_id" \
+  starttoaster/cloudflare-go:latest
+```
 
 View the webUI in your web browser to see it run: `localhost:8080`
 
@@ -20,13 +31,12 @@ services:
 
  cloudflare:
    container_name: cloudflare-dns
-   image: registry.gitlab.com/brandonbutler/cloudflare-go/cloudflare-go:latest
+   image: starttoaster/cloudflare-go:latest
    environment:
-     - CF_EMAIL="example@email.com"
-     - CF_KEY="examplekeywithsomenumbers3241095642"
-     - CF_ZONE="examplezonewithsomenumbers34095243832320934"
+     - CF_EMAIL="email@email.com"
+     - CF_KEY="my_global_api_key"
+     - CF_ZONE="my_zone_id"
 ```
-
 
 **NOTE:** The bare minimum required details to interact with Cloudflare's DNS API is the account email, Global API Key, and Zone ID attributes. This container finds other necessary attributes 
 without requiring user input by itself, but if you need help finding the 3 required attributes I listed, view the section below regarding "API Attributes".

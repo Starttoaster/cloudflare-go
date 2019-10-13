@@ -7,8 +7,7 @@ RUN mkdir -p $APP_PATH
 WORKDIR $APP_PATH
 
 ADD . $APP_PATH
-RUN go test -v \
-    && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-w -s" -o cloudflare
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-w -s" -o cloudflare
 
 
 #End image
